@@ -14,13 +14,14 @@ market-cap on coinmarketcap.com as of April 1, 2018.
 	ada: 10/01/2017
 	ltc: 04/28/2013
 """
+import datetime
 import sys
 import time
 import warnings
 
+import numpy as np
 import pandas as pd
 import sklearn.preprocessing as preprocessing
-
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
 _MAX_UPDATE_LENGTH = 0  # used in method `print_update()`
@@ -128,7 +129,15 @@ def load_returns_matrix (assets, tdelta=None, start_date=None,
     # Join all the time series.
     dfout = pd.concat(dfs, axis=1, join='inner')
     dfout = dfout.pct_change(periods=1, freq=tdelta)
-    dfout = dfout[(dfout.index>=start_date) & (dfout.index<=end_date)]
+
+    # Filter to desired date range (if date restrictions provided).
+    if start_date and end_date:
+        dfout = dfout[(dfout.index>=start_date) & (dfout.index<=end_date)]
+    elif start_date:
+        dfout = dfout[dfout.index>=start_date]
+    elif end_date:
+        dfout = dfout[dfout.index<=end_date]
+
     # Drop rows with any N/As and print warning if more than 10 rows
     # dropped.
     rows_before = len(dfout.index)
@@ -137,6 +146,7 @@ def load_returns_matrix (assets, tdelta=None, start_date=None,
     if rows_dropped>10:
         sys.stderr.write('Warning: More than 10 N/A rows dropped in '
                          'load_returns_matrix.')
+    # Standardize data (if desired).
     if center or scale:
         xout = preprocessing.scale(dfout, axis=0, with_mean=center,
                                    with_std=scale)
@@ -167,9 +177,21 @@ def save_cryptos_to_file ():
         df.to_csv(save_path)
 
 
+def fmt_date (dt):
+    """Applies same date formatting for both Python's datetime and
+    numpy.datetime64 objects.
+    """
+    if isinstance(dt, datetime.datetime):
+        return dt.strftime("%m/%d/%Y")
+    elif isinstance(dt, np.datetime64):
+        return pd.to_datetime(str(dt)).strftime("%m/%d/%Y")
+    else:
+        raise ValueError('Unhandled type: {}'.format(type(dt)))
+
+
 if __name__=='__main__':
     """Example of loading return matrix for two cryptocurrencies."""
     sd = pd.to_datetime('1/1/2016')
     ed = pd.to_datetime('1/1/2018')
     df = load_returns_matrix(['btc', 'eth'], start_date=sd, end_date=ed)
-    print(df.head())
+
