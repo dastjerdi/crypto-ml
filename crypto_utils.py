@@ -20,9 +20,10 @@ import warnings
 
 import pandas as pd
 import sklearn.preprocessing as preprocessing
+
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
-_MAX_UPDATE_LENGTH = 0  # used in method `print_msg()`
+_MAX_UPDATE_LENGTH = 0  # used in method `print_update()`
 
 # Top 10 cryptocurrencies in terms of market capitalization as-of April 1,
 # 2018 and corresponding shorthand names from coinmarketcap.com.
@@ -42,8 +43,10 @@ CRYPTO_SHORTHAND = {'xrp':'ripple', 'btc':'bitcoin', 'eth':'ethereum',
 crypto_min_dates = {}
 
 
-def _load_crypto_df (crypto, start_date=None, last_date=None):
-    """Load and clean cryptocurrency data from coinmarketcap.com."""
+def _scrape_crypto (crypto, start_date=None, last_date=None):
+    """Load and clean cryptocurrency data as time series from
+    coinmarketcap.com.
+    """
     # Load data from web-site.
     if start_date is None:
         start_date = pd.to_datetime('1/1/2011')
@@ -79,38 +82,53 @@ def _load_crypto_df (crypto, start_date=None, last_date=None):
     return df
 
 
-def load_crypto_df (crypto, start_date=None, end_date=None):
+def scrape_crypto (crypto, start_date=None, end_date=None):
     """Returns cryptocurrency data time series."""
-    if type(crypto)==str:
-        # Only single currency.
-        return _load_crypto_df(crypto, start_date, end_date)
+    if isinstance(crypto, str):
+        # Single currency.
+        return _scrape_crypto(crypto, start_date, end_date)
 
-    # For multiple currencies.
+    # Multiple currencies.
     results = []
-    for cryp in crypto:
-        df = _load_crypto_df(cryp, start_date, end_date)
+    for c in crypto:
+        df = _scrape_crypto(c, start_date, end_date)
         results.append(df)
     return tuple(results)
 
 
-def load_returns_matrix (cryptos, tdelta=None, start_date=None,
+def load_asset (x):
+    """Reads DataFrame from csv file from data folder as Time Series."""
+    filepath = 'data/{}.csv'.format(x)
+    df = pd.read_csv(filepath)
+    df['date'] = pd.to_datetime(df['date'])
+    df.set_index('date', drop=True, inplace=True)
+    return df
+
+
+def load_returns_matrix (assets, tdelta=None, start_date=None,
                          end_date=None, center=True, scale=True,
                          use_shortnames=True):
-    """Returns cryptocurrency rolling returns for which a price level is
-    available for all the assets.
+    """Returns DataFrame with rolling returns for time period in which a price
+    level is available for all the assets. Loads data from data folder.
+
+    Args:
+        assets (list): Assets to include in returns matrix.
+        tdelta (pd.Timedelta): Optional, defaults to daily. Rolling return
+        frequency.
     """
     if tdelta is None:
         tdelta = pd.Timedelta(days=1)
-    # Create time series for each crypto's closing price.
+    # Create time series for each asset's closing price.
     dfs = []
-    for crypto in cryptos:
-        df = _load_crypto_df(crypto, start_date, end_date)
+    for asset in assets:
+        df = load_asset(asset)
         df = df[['close']]
-        df.rename(columns={'close':crypto}, inplace=True)
+        df.rename(columns={'close':asset}, inplace=True)
         dfs.append(df)
     # Join all the time series.
     dfout = pd.concat(dfs, axis=1, join='inner')
     dfout = dfout.pct_change(periods=1, freq=tdelta)
+    dfout = dfout[(dfout.index>=start_date) & (dfout.index<=end_date)]
     # Drop rows with any N/As and print warning if more than 10 rows
     # dropped.
     rows_before = len(dfout.index)
@@ -119,8 +137,10 @@ def load_returns_matrix (cryptos, tdelta=None, start_date=None,
     if rows_dropped>10:
         sys.stderr.write('Warning: More than 10 N/A rows dropped in '
                          'load_returns_matrix.')
-    xout = preprocessing.scale(dfout, axis=0, with_mean=center, with_std=scale)
-    dfout = pd.DataFrame(xout, columns=dfout.columns, index=dfout.index)
+    if center or scale:
+        xout = preprocessing.scale(dfout, axis=0, with_mean=center,
+                                   with_std=scale)
+        dfout = pd.DataFrame(xout, columns=dfout.columns, index=dfout.index)
     if use_shortnames:
         dfout.rename(columns=CRYPTO_NAMES, inplace=True)
     return dfout
@@ -136,3 +156,20 @@ def print_update (msg):
     msg = '{0}{1}'.format(msg, ' '*empty_chars)
     sys.stdout.write('{}\r'.format(msg))
     sys.stdout.flush()
+
+
+def save_cryptos_to_file ():
+    """Script used to save cryptocurrency data to CSVs."""
+    for crypto in CRYPTO_SHORTHAND.keys():
+        print_update('Saving {}'.format(crypto))
+        df = scrape_crypto(crypto)
+        save_path = 'data/{}.csv'.format(crypto)
+        df.to_csv(save_path)
+
+
+if __name__=='__main__':
+    """Example of loading return matrix for two cryptocurrencies."""
+    sd = pd.to_datetime('1/1/2016')
+    ed = pd.to_datetime('1/1/2018')
+    df = load_returns_matrix(['btc', 'eth'], start_date=sd, end_date=ed)
+    print(df.head())
