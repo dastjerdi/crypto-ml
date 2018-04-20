@@ -189,9 +189,13 @@ def fmt_date (dt):
         raise ValueError('Unhandled type: {}'.format(type(dt)))
 
 
-if __name__=='__main__':
+def demo_loading_return_matrix ():
     """Example of loading return matrix for two cryptocurrencies."""
     sd = pd.to_datetime('1/1/2016')
     ed = pd.to_datetime('1/1/2018')
-    df = load_returns_matrix(['btc', 'eth'], start_date=sd, end_date=ed)
+    df_trial = load_returns_matrix(['btc', 'eth'], start_date=sd, end_date=ed)
+    print('Example return matrix:')
+    print(df_trial.head())
 
+if __name__=='__main__':
+    demo_loading_return_matrix()
