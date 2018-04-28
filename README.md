@@ -8,5 +8,3 @@ Project Guidelines: [https://github.com/cs109/2018-cs109b/blob/master/Projects/P
 - Present poster at SEAS Design Fair (12:25-2:30pm): [https://www.seas.harvard.edu/designfair](https://www.seas.harvard.edu/designfair "SEAS Design Fair")
 
 Poster Instructions: [https://canvas.harvard.edu/courses/37482/pages/poster-instructions](https://canvas.harvard.edu/courses/37482/pages/poster-instructions)
-
-![alt text](/requirements/canvas_req_screenshot.jpg)
