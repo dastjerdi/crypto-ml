@@ -39,6 +39,10 @@ def aggregate_data(fn):
     for i in f:
         x = pd.read_csv(i)
         p = pd.merge(p, x, how='left')
+    #Sorting by date
+    p['date'] = pd.to_datetime(p['date'])
+    p = p.sort_values(by='date')
+    p = p.reset_index(drop=True)
     return p
 
 
@@ -69,8 +73,8 @@ def impute_val(p):
     :return:
     """
     # Reversing the data frame (Sorting by date)
-    p = p.iloc[::-1]
-    p = p.reset_index(drop=True)
+    #p = p.iloc[::-1]
+    #p = p.reset_index(drop=True)
     # Forward Imputation
     p = p.ffill()
     # backward imputation in case the first value is missing
@@ -88,3 +92,4 @@ def norm_minmax(p):
     c.remove('date')
     p[c] = scaler.fit_transform(p[c])
     return p
+
