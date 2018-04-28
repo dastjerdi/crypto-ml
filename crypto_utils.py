@@ -24,7 +24,7 @@ import datetime
 import sys
 import time
 import warnings
-
+import copy
 import numpy as np
 import numpy.testing as testing
 import pandas as pd
@@ -299,6 +299,8 @@ class DesignMatrix(object):
         """Performs all necessary steps to return finalized X, Y data."""
         self._load_time_series()
         self._standardize_crypto_figures()
+        self.df['Y'] = self.df[self.y_crypto].shift(periods=-1)
+        self.df.dropna(axis=0, how='any', inplace=True)
         return self.X, self.Y
 
     def _load_crypto_time_series (self, crypto):
@@ -413,15 +415,18 @@ class DesignMatrix(object):
     @property
     def x_feature_names (self):
         """Returns columns pertaining to design matrix."""
-        return self._x_features
+        x_feats = copy.copy(self._x_features)
+        for x in self.x_assets:
+            x_feats.append(x)
+        return x_feats
 
     @property
     def X (self):
-        return self.df[self._x_features]
+        return self.df[self.x_feature_names]
 
     @property
     def Y (self):
-        return self.df[self.y_crypto]
+        return self.df['Y']
 
 
 def rolling_standardize (x):

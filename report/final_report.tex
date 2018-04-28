@@ -115,14 +115,15 @@ Cryptocurrencies are arguably the most polarizing topic within the financial ser
 
 \subsection{Problem Statement and Motivation}
 
-Our goal is to build a predictive model for the price return of cryptocurrencies with the ultimate aim of such a model leading to a profitable trading strategy. As cryptocurrencies become increasingly accepted as financial assets by mainstream investors, the results from these sorts of predictive modeling exercises have significant implications for investors and market-makers. To build this predictive model, features we will experiment with include trading volume and price history of cryptocurrencies, the price histories of other financial assets, and market-signal features we will engineer using natural language processing (NLP) techniques on financial markets news.
+Our goal is to build a predictive model for the price return of cryptocurrencies with the ultimate aim of such a model leading to a profitable trading strategy. As cryptocurrencies become increasingly accepted as financial assets by mainstream investors, the results from this project and similar predictive modeling exercises have significant implications for investors and market-makers. To build this predictive model, we will experiment with many different types of data, including the trading volume and price history of cryptocurrencies, the price histories of other financial assets, and market-signal features we will engineer using natural language processing (NLP) techniques on financial markets news.
 
 \subsection{Data}
 
-We focus on the following five cryptocurrencies, which, as of 4/1/2018, were among the top 10 cryptocurrencies in terms of market cap on coinmarketcap.com and have data going back to 2015 or earlier: Bitcoin (btc), Ethereum (eth), Ripple (xrp), Litecoin (ltc), and Stellar (xlm). This allows us to have over 950 data points if we decide to use daily rolling returns in our design matrix and use a time frame from 8/8/2015 (the earliest date all five have data available together) to 3/31/2018. Bitcoin and Litecoin have relatively earlier start dates compared to others. Connecting this back to our problem statement, our goal is to build a model that would enable us to predict the price return of one of these five cryptocurrencies by using information on the other four cryptocurrencies.
+We focus on the following five cryptocurrencies, which, as of 4/1/2018, were among the top 10 cryptocurrencies in terms of market cap on coinmarketcap.com and have data going back to 2015 or earlier: Bitcoin (btc), Ethereum (eth), Ripple (xrp), Litecoin (ltc), and Stellar (xlm). This enables us to have over 900 data points (using daily rolling returns) in our design matrix and use a time frame from 8/8/2015 (the earliest date all five have data available together) to 3/31/2018. Bitcoin and Litecoin have relatively earlier start dates compared to others, but we wanted to encompass a broader universe of cryptocurrencies than just two. Connecting this back to our problem statement, our goal is to build a model that would enable us to predict the price return of one of these five cryptocurrencies by using information on that cryptocurrency's own price history, as well as that of the other four cryptocurrencies and other features.
 \bigbreak
-In addition to using information on the other four cryptocurrencies, we will also use the price returns on other financial assets (such as equity indices, bond prices, foreign exchange prices, gold, volatility indices of exchanges, prices of major commodities, etc.). It is our hypothesis that the correlation with more traditional financial assets will become stronger (although regarding the direction, we’re not sure about) over the time period analyzed as cryptocurrencies become more mainstream in the investment community.
-
+In addition to using information about the price and volume history of cryptocurrencies, we will also experiment with the price returns on other financial assets (such as equity indices, bond prices, foreign exchange prices, gold, volatility indices of exchanges, prices of major commodities, etc.). It is our hypothesis that the correlation with more traditional financial assets will become stronger (although regarding the direction, we’re not sure about) over the time period analyzed as cryptocurrencies become more mainstream in the investment community.
+\subsubsection{Modeling Time Series}
+Before delving into the existing literature around this topic, it will help to provide a quick overview on certain features of the problem that will accelerate the reader's understanding of following sections. First, as is common in nearly all financial time series, we are concerned with predicting price \textit{changes}, not the absolute price levels. Therefore, our feature space will consist of relative \textit{changes} in the price and volume traded for certain assets. Moreover, because we are more interested in the trading perspective rather than investing, most of our feature space will consist of \textit{daily} moving windows, as opposed to weekly or monthly, which we discuss in more detail later.
 \section{Literature Review}
 
 Unfortunately, there is a dearth of sophisticated analysis on cryptocurrency price return forecasting. Although articles with titles such as ``Use Machine Learning to Predict Bitcoin" abound, they are geared more towards an audience interested in learning software engineering / data science by applying a smattering of techniques to an oversimplified version of the problem. To remedy these inadequacies, we aim to contextualize the problem of cryptocurrency price return forecasting within the broader literature on financial time series analysis.
@@ -137,17 +138,39 @@ Any trading strategy relying on historical price patterns of multiple assets sho
 
 \section{Modeling Approach}
 
+Our general approach to modeling mirrors the ``Machine Learning Development Framework," which is illustrated in the following graphic borrowed from a presentation titled ``A Framework for Applying Machine Learning to Systematic Trading":
 
+\begin{figure}[H]
+	\begin{center}
+		\includegraphics[scale=1.0]{ml_framework_longmore}
+		\caption{Machine Learning Framework, taken from Kris Longmore of Quantify Partners}
+		\label{fig:ml_framework_longmore}
+	\end{center}
+\end{figure}
 
-We tried modeling both a quantitative output (regression problem) and 
+Therefore, the organization of this section will largely mirror the above framework.
+
+\subsection{Selecting Target}
+
+The objective of this project could be addressed in two ways by attempting to predict two related targets:
+\begin{enumerate}
+	\item The \textit{actual} price return of a given cryptocurrency, which is a regression problem.
+	\item The \textit{direction} of the price return for a given cryptocurrency, which can be viewed as a classification problem, with outputs corresponding to trading signals: (+1) Buy (-1) Sell (0) Do Nothing.
+\end{enumerate} 
+
+The selection of a target also involves the selection of how to measure performance. In the first case, the most valid performance metric is the mean squared error (MSE), i.e., the average squared difference between our predicted price return and the actual price return. In the classification case, we could approach the problem in a number of ways. We'll compare performance across two metrics: (i) the percentage of Buy/Sell signals that are directionally correct and (ii) the average returns of executing on the Buy/Sell signals. One additional decision to make with the classification problem is what threshold to use when labeling our training data a `Buy'/`Sell' as opposed to a `Do Nothing'. Presumably, we would want to avoid trading when the Buy/Sell signal isn't very strong, so we experiment with varying thresholds.
+
+\subsection{Selecting Features}
+
+Most financial time series involve some form of lagging variables.
 
 \subsection{Baseline Model}
-
-\subsection{d}
 
 
 
 \section{Conclusion}
+
+
 
 \newpage
 {\large \textbf{References}}

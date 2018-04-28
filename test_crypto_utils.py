@@ -84,7 +84,25 @@ class TestDesignMatrix(unittest.TestCase):
                   col, cryp.fmt_date(idx))
             actual_value = df.loc[idx, col]
             self.assertAlmostEqual(value, actual_value, DEC_ACCY, msg)
+        print('\n\nX-feature names: {}'.format(self.dm.x_feature_names))
 
+    def test_Y (self):
+        """Ensure y-value (bitcoin price return) at future date is what we
+        expect.
+
+        For example, the Y value for 1/12/2018 should be equal to the bitcoin
+        return on 1/13.
+        """
+        X, Y = self.dm.get_data()
+        expected = [(pd.to_datetime('1/12/2018'), 0.027151911),
+                    (pd.to_datetime('1/13/2018'), -0.040960432),
+                    (pd.to_datetime('1/14/2018'), 0.00347081),
+                    (pd.to_datetime('1/15/2018'), -0.168548025)]
+
+        for (idx, e) in expected:
+            msg = 'Y value not what expected on {}'.format(cryp.fmt_date(idx))
+            actual = Y[idx]
+            self.assertAlmostEqual(e, actual, DEC_ACCY, msg)
 
 
 if __name__=='__main__':
