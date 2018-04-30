@@ -31,7 +31,7 @@ class TestDesignMatrix(unittest.TestCase):
         price- and volume-change data.
         """
         self.dm._load_time_series()
-        df = self.dm.df
+        df = self.dm.df_final
         # Define expected results.
         dt_1 = pd.to_datetime('3/1/2018')
         dt_2 = pd.to_datetime('2/10/2018')
@@ -70,7 +70,7 @@ class TestDesignMatrix(unittest.TestCase):
     def test_standardize_crypto_figures (self):
         self.dm._load_time_series()
         self.dm._standardize_crypto_figures()
-        df = self.dm.df
+        df = self.dm.df_final
 
         # Define expected results.
         # Rolling figures for 7/1 were standardized by data from 20-day

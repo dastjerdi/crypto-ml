@@ -160,12 +160,13 @@ class DesignMatrix(object):
         self.n_std_window = kwargs.get('n_std_window', 20)
         self.start_date = kwargs.get('start_date', pd.to_datetime('1/1/2010'))
         self.end_date = kwargs.get('end_date', pd.to_datetime('today'))
-        self.df = None
+        self.df_time_series = None
+        self.df_final = None
         self._x_features = []
         self.done_loading_time_series = False
         self.done_standardizing_crypto = False
 
-    def get_data (self, cat_Y=False):
+    def get_data (self):
         """Performs all necessary steps to return finalized X, Y data.
 
         Args:
@@ -174,8 +175,8 @@ class DesignMatrix(object):
         """
         self._load_time_series()
         self._standardize_crypto_figures()
-        self.df['Y'] = self.df[self.y_crypto].shift(periods=-1)
-        self.df.dropna(axis=0, how='any', inplace=True)
+        self.df_final['Y'] = self.df_final[self.y_crypto].shift(periods=-1)
+        self.df_final.dropna(axis=0, how='any', inplace=True)
 
         return self.X, self.Y
 
@@ -245,16 +246,17 @@ class DesignMatrix(object):
             df = self._load_noncrypto_time_series(asset)
             dfs.append(df)
         # Join DFs based on date index.
-        df_final = pd.concat(dfs, axis=1, join='inner')
+        df_result = pd.concat(dfs, axis=1, join='inner')
         # Drop rows with any N/As and print warning if more than 10 rows
         # dropped.
-        rows_before = len(df_final.index)
-        df_final.dropna(axis=0, how='any', inplace=True)
-        rows_dropped = rows_before - len(df_final.index)
+        rows_before = len(df_result.index)
+        df_result.dropna(axis=0, how='any', inplace=True)
+        rows_dropped = rows_before - len(df_result.index)
         if rows_dropped>10:
             sys.stderr.write('Warning: More than 10 N/A rows dropped in '
                              '`load_time_series`.')
-        self.df = df_final
+        self.df_time_series = df_result
+        self.df_final = df_result.copy(deep=True)
         self.done_loading_time_series = True
 
     def _standardize_crypto_figures (self):
@@ -270,23 +272,13 @@ class DesignMatrix(object):
             col_price_std = '{}_px_std'.format(cryp)
             col_vol_std = '{}_volume_std'.format(cryp)
             self._x_features.extend([col_price_std, col_vol_std])
-            self.df[col_price_std] = self.df[col_price].rolling(window=n).apply(
+            self.df_final[col_price_std] = self.df_final[col_price].rolling(
+                window=n).apply(
                   rolling_standardize)
-            self.df[col_vol_std] = self.df[col_vol].rolling(window=n).apply(
+            self.df_final[col_vol_std] = self.df_final[col_vol].rolling(
+                window=n).apply(
                   rolling_standardize)
         self.done_standardizing_crypto = True
-
-    def _standardize_cols (self, cols, n_trail):
-        for col in cols:
-            self.df[col] = self.df[col].rolling(window=n_trail + 1).apply(
-                  rolling_standardize)
-
-    @staticmethod
-    def standardize_rolling (s, n_trail):
-        """Standardize series by centering and scaling according to
-        figures measured over the prior `n_trail` observations.
-        """
-        return s.rolling(window=n_trail + 1).apply(rolling_standardize)
 
     @property
     def x_feature_names (self):
@@ -298,11 +290,11 @@ class DesignMatrix(object):
 
     @property
     def X (self):
-        return self.df[self.x_feature_names]
+        return self.df_final[self.x_feature_names]
 
     @property
     def Y (self):
-        return self.df['Y']
+        return self.df_final['Y']
 
 
 def rolling_standardize (x):
