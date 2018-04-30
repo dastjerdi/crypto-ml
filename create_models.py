@@ -1,28 +1,11 @@
 """
 Script to create models
 """
-import datetime
-import matplotlib.dates as mdates
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import seaborn as sns
-import calendar
-import numpy as np
-import pandas as pd
-from scipy import stats
-import sys
-from sklearn.preprocessing import MinMaxScaler
-from sklearn.decomposition import PCA
 
-from sklearn.linear_model import LogisticRegression
 from sklearn.linear_model import LogisticRegressionCV
-from sklearn.utils import resample
-from sklearn.model_selection import cross_val_score
 from sklearn.metrics import accuracy_score
-from sklearn.preprocessing import PolynomialFeatures
-from sklearn.linear_model import LassoCV
-from sklearn.decomposition import PCA
 from sklearn.model_selection import cross_val_score
 import sklearn.metrics as metrics
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
@@ -31,12 +14,8 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.ensemble import AdaBoostClassifier
 from sklearn import svm
-from sklearn.linear_model import LinearRegression
 from sklearn.neighbors import KNeighborsClassifier
-from sklearn.metrics import roc_curve, auc
-from sklearn.metrics import confusion_matrix
-import statsmodels.api as sm
-from sklearn.model_selection import KFold
+from sklearn.metrics import auc
 
 
 

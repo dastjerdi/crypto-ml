@@ -1,6 +1,10 @@
 """
 Cryptocurrency data utils.
 
+Used for preprocessing cryptocurrency and other data. `DesignMatrix` class
+the main interface to producing features to feed into the machine learning
+algorithms.
+
 Notes:
     Preprocessing of data that is for a cryptocurrency is different than for
     other assets. Therefore, the names of files containing data for
@@ -156,12 +160,19 @@ class DesignMatrix(object):
         self.done_loading_time_series = False
         self.done_standardizing_crypto = False
 
-    def get_data (self):
-        """Performs all necessary steps to return finalized X, Y data."""
+    def get_data (self, cat_Y=False):
+        """Performs all necessary steps to return finalized X, Y data.
+
+        Args:
+            cat_Y (bool): Optional, default False. If True, then Y data is
+            converted to a categorical variable: Buy: +1, Sell -1, Neutral 0.
+        """
         self._load_time_series()
         self._standardize_crypto_figures()
-        self.df['Y'] = self.df[self.y_crypto].shift(periods=-1)
-        self.df.dropna(axis=0, how='any', inplace=True)
+        df = self.df.copy(deep=True)
+        df['Y'] = df[self.y_crypto].shift(periods=-1)
+        df.dropna(axis=0, how='any', inplace=True)
+
         return self.X, self.Y
 
     def _load_crypto_time_series (self, crypto):
