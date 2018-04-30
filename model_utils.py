@@ -3,15 +3,6 @@ Functions for
 1. Preprocessing the data
 2. Normalization
 """
-import pandas as pd
-import seaborn as sns
-import calendar
-import numpy as np
-import pandas as pd
-from scipy import stats
-import sys
-from sklearn.preprocessing import MinMaxScaler
-from sklearn.decomposition import PCA
 from eda_utils import *
 
 def prepare_data(fn):

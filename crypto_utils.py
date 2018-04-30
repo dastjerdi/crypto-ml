@@ -3,7 +3,8 @@ Cryptocurrency data utils.
 
 Used for preprocessing cryptocurrency and other data. `DesignMatrix` class
 the main interface to producing features to feed into the machine learning
-algorithms.
+algorithms. Also contains scripts to scrape cryptocurrency data from
+coinmarketcap.com.
 
 Notes:
     Preprocessing of data that is for a cryptocurrency is different than for
@@ -23,6 +24,14 @@ market-cap on coinmarketcap.com as of April 1, 2018.
 	btc: 04/28/2013
 	ada: 10/01/2017
 	ltc: 04/28/2013
+
+Attributes:
+    CRYPTO_NAMES (dict): Top 10 cryptocurrencies in terms of market
+    capitalization as-of April 1, 2018 and corresponding shorthand names from
+    coinmarketcap.com. The key values should be the strings used when
+    scraping the data from the web-site.
+    CRYPTO_SHORTHAND (dict): Reverse role of `CRYPTO_NAMES`. Converts
+    shorthand code to full name.
 """
 import copy
 import datetime
@@ -38,14 +47,10 @@ warnings.simplefilter(action='ignore', category=FutureWarning)
 
 _MAX_UPDATE_LENGTH = 0  # used in method `print_update()`
 
-# Top 10 cryptocurrencies in terms of market capitalization as-of April 1,
-# 2018 and corresponding shorthand names from coinmarketcap.com.
-# The key values should be the strings used when scraping the data from the
-# web-site.
 CRYPTO_NAMES = {'ripple':'xrp', 'bitcoin':'btc', 'ethereum':'eth',
                 'litecoin':'ltc', 'bitcoin-cash':'bch', 'eos':'eos',
                 'cardano':'ada', 'stellar':'xlm', 'neo':'neo', 'iota':'miota'}
-# Reverse of `CRYPTO_NAMES` => Convert shorthand code to full name.
+#
 CRYPTO_SHORTHAND = {'xrp':'ripple', 'btc':'bitcoin', 'eth':'ethereum',
                     'ltc':'litecoin', 'bch':'bitcoin-cash', 'eos':'eos',
                     'ada':'cardano', 'xlm':'stellar', 'neo':'neo',

@@ -17,8 +17,6 @@ from sklearn import svm
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.metrics import auc
 
-
-
 import warnings
 warnings.filterwarnings('ignore')
 
