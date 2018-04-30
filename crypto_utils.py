@@ -174,9 +174,8 @@ class DesignMatrix(object):
         """
         self._load_time_series()
         self._standardize_crypto_figures()
-        df = self.df.copy(deep=True)
-        df['Y'] = df[self.y_crypto].shift(periods=-1)
-        df.dropna(axis=0, how='any', inplace=True)
+        self.df['Y'] = self.df[self.y_crypto].shift(periods=-1)
+        self.df.dropna(axis=0, how='any', inplace=True)
 
         return self.X, self.Y
 

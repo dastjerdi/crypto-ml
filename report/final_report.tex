@@ -123,7 +123,18 @@ We focus on the following five cryptocurrencies, which, as of 4/1/2018, were amo
 \bigbreak
 In addition to using information about the price and volume history of cryptocurrencies, we will also experiment with the price returns on other financial assets (such as equity indices, bond prices, foreign exchange prices, gold, volatility indices of exchanges, prices of major commodities, etc.). It is our hypothesis that the correlation with more traditional financial assets will become stronger (although regarding the direction, we’re not sure about) over the time period analyzed as cryptocurrencies become more mainstream in the investment community.
 \subsubsection{Modeling Time Series}
-Before delving into the existing literature around this topic, it will help to provide a quick overview on certain features of the problem that will accelerate the reader's understanding of following sections. First, as is common in nearly all financial time series, we are concerned with predicting price \textit{changes}, not the absolute price levels. Therefore, our feature space will consist of relative \textit{changes} in the price and volume traded for certain assets. Moreover, because we are more interested in the trading perspective rather than investing, most of our feature space will consist of \textit{daily} moving windows, as opposed to weekly or monthly, which we discuss in more detail later.
+Before delving into the existing literature around this topic, it will help to provide a quick overview on certain features of the problem that will accelerate the reader's understanding of following sections. First, as is common in nearly all financial time series, we are concerned with predicting price \textit{changes}, not the absolute price levels. Therefore, our feature space will consist of relative \textit{changes} in the price and volume traded for certain assets. Moreover, because we are more interested in the trading perspective rather than investing, most of our feature space will consist of \textit{daily} moving windows, as opposed to weekly or monthly, which we discuss in more detail later. A brief visual may help; the following figure shows what the rough workflow would be if we were attempting to predict the price change for Bitcoin the following day based on the price changes for Bitcoin, Ethereum and Ripple:
+
+\begin{figure}[H]
+	\begin{center}
+		\includegraphics[scale=0.75]{simple_model_graph}
+		\caption{Simple Model Illustration}
+		\label{fig:simple_model_graph}
+	\end{center}
+\end{figure}
+
+As described later, the actual feature matrix we use will be significantly more involved.
+
 \section{Literature Review}
 
 Unfortunately, there is a dearth of sophisticated analysis on cryptocurrency price return forecasting. Although articles with titles such as ``Use Machine Learning to Predict Bitcoin" abound, they are geared more towards an audience interested in learning software engineering / data science by applying a smattering of techniques to an oversimplified version of the problem. To remedy these inadequacies, we aim to contextualize the problem of cryptocurrency price return forecasting within the broader literature on financial time series analysis.
@@ -156,13 +167,41 @@ The objective of this project could be addressed in two ways by attempting to pr
 \begin{enumerate}
 	\item The \textit{actual} price return of a given cryptocurrency, which is a regression problem.
 	\item The \textit{direction} of the price return for a given cryptocurrency, which can be viewed as a classification problem, with outputs corresponding to trading signals: (+1) Buy (-1) Sell (0) Do Nothing.
-\end{enumerate} 
+\end{enumerate}
 
-The selection of a target also involves the selection of how to measure performance. In the first case, the most valid performance metric is the mean squared error (MSE), i.e., the average squared difference between our predicted price return and the actual price return. In the classification case, we could approach the problem in a number of ways. We'll compare performance across two metrics: (i) the percentage of Buy/Sell signals that are directionally correct and (ii) the average returns of executing on the Buy/Sell signals. One additional decision to make with the classification problem is what threshold to use when labeling our training data a `Buy'/`Sell' as opposed to a `Do Nothing'. Presumably, we would want to avoid trading when the Buy/Sell signal isn't very strong, so we experiment with varying thresholds.
+\subsubsection{Measuring Performance}
+
+The selection of a target also involves the selection of how to measure performance. In the regression problem, the most easily interpretable performance metric is the mean absolute error (MAE), i.e., the average absolute difference between our predicted price return and the actual price return. The more common mean squared error (MSE) metric is less intuitive since we are typically dealing with decimal numbers smaller than one, and consequently whose square is actually a smaller number. In the classification case, we could approach the problem in a number of ways. We'll compare performance across two metrics: (i) the percentage of Buy/Sell signals that are directionally correct and (ii) the average returns of executing on the Buy/Sell signals. One additional decision to make with the classification problem is what threshold to use when labeling our training data a `Buy'/`Sell' as opposed to a `Do Nothing'. Presumably, we would want to avoid trading when the Buy/Sell signal isn't very strong, so we experiment with varying thresholds.
 
 \subsection{Selecting Features}
 
-Most financial time series involve some form of lagging variables.
+Given the methodology suggested by the existing literature in systematic trading, we first introduced lagging variables for the price returns of cryptocurrencies. Implicit in the inclusion of these is the belief that future returns are, to some degree, a function of prior returns. First, let us frame the problem to make it clearer. Let's say that on March 28, 2018, we wanted to predict the change in the price of Bitcoin that would occur on the following day (March 29, 2018). We further assume that the decision-maker would wait until the end of the day to make a decision and hence would have at their disposal the return experienced by the cryptocurrencies in scope at the end of March 28, 2018. Therefore, we define the trailing (``rolling") returns as:
+$$r_t = \frac{\text{price}_t}{\text{price}_{t-1}} - 1$$
+
+where $\text{price}_t$ is the closing price on 3/28 and $\text{price}_{t-1}$ is the closing price on 3/27. As an example, Bitcoin's closing levels on 3/28 and 3/27 were 7954.48 and 7833.04, respectively, so its daily rolling return on 3/28 is equal to:
+$$r_t = \frac{7954.48}{7833.04} - 1=1.55\%$$
+
+We created similar lagging features for the volume traded in cryptocurrencies (where volume is defined as the units bought/sold multiplied by the average price at which those units were bought/sold).
+
+\subsubsection{Preprocessing}
+
+When using lagging financial time series as features, one must make a decision on how to standardize them. A 10\% one-day change in the price of Bitcoin, for example, relays different information depending on when that change was observed. In Figure \ref{fig:ma_returns_std_btc}, we see that the standard deviation of daily returns has changed significantly over time. When we compute the standard deviation of daily returns over rolling 30-day windows, i.e., taking the standard deviation of the daily returns in the 30 observations leading up to and including $t$, we see $\sigma$ is significantly greater towards 2018 than it is in 2016.
+
+\begin{figure}[H]
+	\begin{center}
+		\includegraphics[scale=0.75]{ma_returns_std_btc}
+		\caption{$\sigma$ calculated over rolling 30-day periods}
+		\label{fig:ma_returns_std_btc}
+	\end{center}
+\end{figure}
+
+Returning to the original example being addressed, a 10\% one-day change in the price of Bitcoin is more than a 2-$\sigma$ event for most of 2016 while in 2018 it begins to approach being only a 1-$\sigma$ event. Therefore, we decided to standardize each daily rolling return as follows:
+$$r^*_t = \frac{r_t - \mu_{t-1}}{\sigma_{t-1}}$$
+
+where 
+$$\mu_{t-1}=\frac{1}{30} \sum_{i=t-31}^{t-1} r_i$$
+
+Of course, the number of days to use for this rolling standardization window is, in itself, a meta-feature to our problem.
 
 \subsection{Baseline Model}
 
