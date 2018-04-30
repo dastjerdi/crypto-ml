@@ -213,15 +213,38 @@ Of course, the number of days to use for this rolling standardization window is,
 
 \subsection{Baseline Model}
 
+We first made three decisions regarding the feature space that greatly simplified subsequent steps of further engineering features and deciding which to drop:
+\begin{enumerate}
+	\item Fix the rolling window for measuring changes in price and volume.
+	\item Fix the rolling window used to standardize price and volume.
+	\item Decide whether to include weekends or not.
+\end{enumerate}
+
+First, by deciding on the above factors, we preclude the need to iterate over all different variations when experimenting with different models. Second, our more engineered features (with their own meta-features) depend on how the above steps are set. Finally, it makes intuitive sense that these decisions are relatively model-agnostic. In other words, if a simple model performs better given a certain rolling window for changes in price and volume, then there is strong justification for believing that features created using that window carry the most relevant information, even with more complex models.
+
+\subsubsection{Linear Regression: Continuous Target}
+
+\subsubsection{Logistic Regression: Categorical Target}
 
 
-\subsection{title}
+
+\section{Results}
+
+\subsection{Project Trajectory}
+
+For the baseline model, we first had to decide which rolling windows to use. 
+
+\subsection{Interpretation}
 
 
 
 \section{Conclusion}
 
+Results were bad.
 
+\subsection{Possible Future Work}
+
+Much to do.
 
 \newpage
 {\large \textbf{References}}

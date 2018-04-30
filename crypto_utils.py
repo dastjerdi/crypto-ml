@@ -150,9 +150,11 @@ class DesignMatrix(object):
     """
 
     def __init__ (self, x_cryptos, y_crypto, **kwargs):
+        if y_crypto in x_cryptos:
+            x_cryptos.remove(y_crypto)
         self.x_cryptos = x_cryptos
         self.y_crypto = y_crypto
-        self.xy_cryptos = x_cryptos
+        self.xy_cryptos = copy.copy(x_cryptos)
         self.xy_cryptos.append(y_crypto)
         self.x_assets = kwargs.get('x_assets', [])
         self.n_rolling_price = kwargs.get('n_rolling_price', 1)
@@ -166,19 +168,80 @@ class DesignMatrix(object):
         self.done_loading_time_series = False
         self.done_standardizing_crypto = False
 
-    def get_data (self):
+    def get_data (self, std=True, lag_indicator=False, y_category=False,
+                  y_category_thresh=0.01, y_std=False):
         """Performs all necessary steps to return finalized X, Y data.
 
         Args:
-            cat_Y (bool): Optional, default False. If True, then Y data is
+            std (bool): Optional, default True. If False, then data is not
+            normalized/standardized.
+            lag_indicator (bool): Optional, default False. If True,
+            then `lagged_others` column is created.
+            y_category (bool): Optional, default False. If True, then Y data is
             converted to a categorical variable: Buy: +1, Sell -1, Neutral 0.
+            y_category_thresh (float): Optional, default 0.01. Only relevant
+            if `y_category==True`. Y values with absolute value <=
+            `y_category_thresh` will be classified as Neutral (0).
+            y_std (bool): Optional, default False. If True, then the
+            continuous Y is set to the standardized version, which impacts
+            both the regression and classification Y. Only matters when
+            std==True.
         """
         self._load_time_series()
-        self._standardize_crypto_figures()
-        self.df_final['Y'] = self.df_final[self.y_crypto].shift(periods=-1)
-        self.df_final.dropna(axis=0, how='any', inplace=True)
+        # If we standardize, the column name used to create our shifted Y
+        # will be different.
+        if std:
+            self._standardize_crypto_figures()
+            if y_std:
+                y_continuous_col = '{}_px_std'.format(self.y_crypto)
+            else:
+                y_continuous_col = self.y_crypto
+        else:
+            y_continuous_col = self.y_crypto
+        if lag_indicator:
+            self._add_relative_lag_indicator()
 
-        return self.X, self.Y
+        self.df_final['Y'] = self.df_final[y_continuous_col].shift(periods=-1)
+        self.df_final.dropna(axis=0, how='any', inplace=True)
+        if y_category:
+            self.df_final['Y'] = self._categorize_Y(self.df_final['Y'],
+                                                    y_category_thresh)
+
+        X = self.df_final[self.x_feature_names]
+        Y = self.df_final['Y']
+        return X, Y
+
+    def _add_relative_lag_indicator (self):
+        """Add indicator variable `lagged_others` indicating whether the price
+        return of the Y crypto was lower than that of all the X cryptos.
+
+        Assumes standardized price change columns have already been added.
+        """
+
+        def crypto_return_was_worst (row, y_crypto, x_cryptos):
+            """Returns True if rolling price change for our Y crypto was
+            worse than that of the X cryptos.
+            """
+            lowest_x = row[x_cryptos].min()
+            return row[y_crypto]<lowest_x
+
+        x_cols, y_col = self._get_crypto_price_change_col_names()
+        func = lambda x:crypto_return_was_worst(x, y_col, x_cols)
+        self.df_final['lagged_others'] = self.df_final.apply(func, axis=1)
+        self._x_features.append('lagged_others')
+
+    def _get_crypto_price_change_col_names (self):
+        """Returns (X_list, Y_value) tuple of column names for the standardized
+        price changes of the X and Y cryptos.
+        """
+        # Prepare column names for standardized price changes of X cryptos.
+        x_crypto_cols = []
+        for cryp in self.x_cryptos:
+            x_crypto_cols.append('{}_px_std'.format(cryp))
+        # Prepare Y crypto column name.
+        y_crypto_col = '{}_px_std'.format(self.y_crypto)
+        # Return both
+        return x_crypto_cols, y_crypto_col
 
     def _load_crypto_time_series (self, crypto):
         """Load time series for cryptocurrency containing volume and closing
@@ -259,6 +322,18 @@ class DesignMatrix(object):
         self.df_final = df_result.copy(deep=True)
         self.done_loading_time_series = True
 
+    @staticmethod
+    def _categorize_Y (Y, threshold):
+        new_Y = np.zeros(Y.shape[0], dtype=np.int16)
+        for i, Y_i in enumerate(Y):
+            if Y_i>threshold:
+                new_Y[i] = 1
+            elif Y_i<-threshold:
+                new_Y[i] = -1
+            else:
+                new_Y[i] = 0
+        return new_Y
+
     def _standardize_crypto_figures (self):
         """Add new columns containing standardized price and volume for all
         cryptocurrencies.
@@ -273,10 +348,10 @@ class DesignMatrix(object):
             col_vol_std = '{}_volume_std'.format(cryp)
             self._x_features.extend([col_price_std, col_vol_std])
             self.df_final[col_price_std] = self.df_final[col_price].rolling(
-                window=n).apply(
+                  window=n).apply(
                   rolling_standardize)
             self.df_final[col_vol_std] = self.df_final[col_vol].rolling(
-                window=n).apply(
+                  window=n).apply(
                   rolling_standardize)
         self.done_standardizing_crypto = True
 
