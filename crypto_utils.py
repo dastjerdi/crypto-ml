@@ -132,6 +132,15 @@ def load_asset (fname):
 class DesignMatrix(object):
     """Creates design matrix for cryptocurrency algorithms.
 
+    Args:
+        x_cryptos (list): Cryptocurrencies we want to use to build our
+        feature matrix. `y_crypto` is automatically added to corresponding
+        `x_cryptos` attribute since we want to use trailing data for the
+        cryptocurrency we are trying to predict as well so it should not be
+        included in this list (if it is, it's simply removed).
+        y_crypto (str): Cryptocurrency whose price return (direction) we want
+        to predict.
+
     Keyword Args:
         n_rolling_price (int): Optional, default 1. Days over which to compute
         rolling (trailing) price returns.
@@ -159,7 +168,7 @@ class DesignMatrix(object):
         self.x_assets = kwargs.get('x_assets', [])
         self.n_rolling_price = kwargs.get('n_rolling_price', 1)
         self.n_rolling_volume = kwargs.get('n_rolling_volume', 1)
-        self.n_std_window = kwargs.get('n_std_window', 20)
+        self.n_std_window = kwargs.get('n_std_window', 10)
         self.start_date = kwargs.get('start_date', pd.to_datetime('1/1/2010'))
         self.end_date = kwargs.get('end_date', pd.to_datetime('today'))
         self.df_time_series = None
@@ -214,7 +223,7 @@ class DesignMatrix(object):
         Y = self.df_final['Y']
         return X, Y
 
-    def _add_news_features(self):
+    def _add_news_features (self):
         """PLACEHOLDER FOR ALI"""
         # You can switch this name to whatever you want, just needs to be added
         # to self._x_features at the end (which it currently is).
@@ -224,7 +233,6 @@ class DesignMatrix(object):
 
         # Make sure to add it to self._x_features.
         self._x_features.append(feature_column_name)
-
 
     def _add_relative_lag_indicator (self):
         """Add indicator variable `lagged_others` indicating whether the price
@@ -500,12 +508,12 @@ def fmt_date (dt):
         raise ValueError('Unhandled type: {}'.format(type(dt)))
 
 
-if __name__ == '__main__':
+if __name__=='__main__':
     x_cryptos = ['ltc', 'xrp', 'xlm', 'eth']
     y_crypto = 'btc'
-    kwargs = {'n_rolling_price':1, 'n_rolling_volume':2,
+    params = {'n_rolling_price':1, 'n_rolling_volume':2,
               'x_assets':['SP500'], 'n_std_window':20}
 
-    dm = DesignMatrix(x_cryptos=x_cryptos, y_crypto=y_crypto, **kwargs)
+    dm = DesignMatrix(x_cryptos=x_cryptos, y_crypto=y_crypto, **params)
     X, Y = dm.get_data(add_news=True)
     print(X.head(5))

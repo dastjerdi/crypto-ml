@@ -2,20 +2,27 @@
 Script to create models
 """
 import warnings
+warnings.filterwarnings('ignore')
 
+import scipy.stats as stats
 import numpy as np
 import pandas as pd
 from sklearn import svm
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis, \
     QuadraticDiscriminantAnalysis
-from sklearn.ensemble import AdaBoostClassifier, RandomForestClassifier
-from sklearn.linear_model import LogisticRegressionCV
-from sklearn.metrics import accuracy_score, auc
+from sklearn.ensemble import AdaBoostClassifier, RandomForestClassifier, \
+    RandomForestRegressor
+from sklearn.linear_model import LogisticRegressionCV, RidgeCV, LassoCV, \
+    ElasticNetCV
+from sklearn.metrics import accuracy_score, auc, mean_absolute_error
 import sklearn.metrics as metrics
-from sklearn.model_selection import cross_val_score
+from sklearn.model_selection import cross_val_score, GridSearchCV, \
+    RandomizedSearchCV
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.tree import DecisionTreeClassifier
-warnings.filterwarnings('ignore')
+from xgboost import XGBRegressor
+from crypto_utils import print_update
+import time
 
 
 def directional_accuracy (y_true, y_pred):
@@ -26,15 +33,101 @@ def directional_accuracy (y_true, y_pred):
     order because the scope of elements to inspect is determined by the
     values of `y_pred`.
     """
-    idx_of_interest = np.where(y_pred != 0)[0]
+    idx_of_interest = np.where(y_pred!=0)[0]
     in_scope_total = len(idx_of_interest)
     correct = 0
     print(idx_of_interest)
     for i in idx_of_interest:
-        if y_true[i] == y_pred[i]:
-            correct +=1
-    return correct / in_scope_total
+        if y_true[i]==y_pred[i]:
+            correct += 1
+    return correct/in_scope_total
 
+
+def build_xgb_model (X_train, y_train, n_cv, verbose=False):
+    """Iterate over a hyperparameter space and return best model on a
+    validation set reserved from input training data.
+    """
+    # Define hyperparam space.
+    exponential_distr = stats.expon(0, 50)
+    cv_params = {
+        'n_estimators':stats.randint(4, 100),
+        'max_depth':stats.randint(2, 100),
+        'learning_rate':stats.uniform(0.05, 0.95),
+        'gamma':stats.uniform(0, 10),
+        'reg_alpha':exponential_distr,
+        'min_child_weight':exponential_distr
+        }
+
+    # Iterate over hyperparam space.
+    xgb = XGBRegressor(nthreads=-1)  # nthreads=-1 => use max cores
+    t0 = time.time()
+    if verbose:
+        print_update('Tuning XGBRegressor hyperparams...')
+    gs = RandomizedSearchCV(xgb, cv_params, n_iter=200, n_jobs=1, cv=n_cv)
+    gs.fit(X_train, y_train)
+    if verbose:
+        print_update('Finished tuning XGBRegressor in {:.0f} secs.'.format(
+              time.time() - t0))
+
+    return gs.best_estimator_, gs
+
+
+def optimize_regressor (estimator, X_train, y_train, params, cv):
+    """Assumes default scoring (R^2 for regressors)."""
+    gs_model = GridSearchCV(estimator, cv=cv, param_grid=params).fit(X_train,
+                                                                     y_train)
+    return gs_model
+
+
+def run_regression_models (X_train, y_train, X_test, y_test, scoring=None):
+    """Analog to `traditional_models()` for the continuous output
+    (regression) problem.
+    """
+    if scoring is None:
+        scoring = mean_absolute_error
+
+    N_CV = 3  # cross-validation folds to use
+    # Hyperparameter space for regression models.
+    cv_lasso_n_alphas = 100
+    cv_ridge_alphas = [0.1, 0.5, 1.0, 5.0, 10.0]
+    cv_enet_n_alphas = 100
+    cv_enet_l1_ratios = np.linspace(0.1, 1.0, 10)
+    gs_rforest_params = {'n_estimators':range(5, 30, 5)}
+
+    # Fit models / solve for optimal hyperparameters.
+    ridge = RidgeCV(alphas=cv_ridge_alphas, cv=N_CV).fit(X_train, y_train)
+    lasso = LassoCV(n_alphas=cv_lasso_n_alphas, cv=N_CV).fit(X_train, y_train)
+    grid_rf = optimize_regressor(RandomForestRegressor(), X_train, y_train,
+                                 gs_rforest_params, N_CV)
+    enet = ElasticNetCV(l1_ratio=cv_enet_l1_ratios, n_alphas=cv_enet_n_alphas,
+                        cv=N_CV).fit(X_train, y_train)
+    rf = RandomForestRegressor(**grid_rf.best_params_).fit(X_train, y_train)
+    xgb, grid_xgb = build_xgb_model(X_train, y_train, N_CV)
+
+    # Compute score for each model on test set.
+    models = [(ridge, 'Ridge'), (lasso, 'Lasso'), (rf, 'RandomForest'),
+              (enet, 'ElasticNet'), (xgb, 'XGBRegressor')]
+
+    df = pd.DataFrame(columns=['model', 'score', 'hyperparam', 'value'])
+    for (model, name) in models:
+        score = scoring(y_test, model.predict(X_test))
+        new_row = {'model':name, 'score':score}
+        df = df.append(new_row, ignore_index=True)
+
+    # Add hyperparams that we solved for to results for models that have them.
+    df.set_index('model', inplace=True, drop=True)
+    df.loc['Ridge', 'hyperparam'] = 'alpha'
+    df.loc['Ridge', 'value'] = ridge.alpha_
+    df.loc['Lasso', 'hyperparam'] = 'alpha'
+    df.loc['Lasso', 'value'] = lasso.alpha_
+    df.loc['RandomForest', 'hyperparam'] = 'n_estimators'
+    df.loc['RandomForest', 'value'] = grid_rf.best_params_['n_estimators']
+    df.loc['ElasticNet', 'hyperparam'] = 'l1_ratio'
+    df.loc['ElasticNet', 'value'] = enet.l1_ratio_
+    df.loc['XGBRegressor', 'hyperparam'] = 'n_estimators'
+    df.loc['XGBRegressor', 'value'] = grid_xgb.best_params_['n_estimators']
+
+    return df
 
 
 def traditional_models (X_train, y_train, X_test, y_test, pos_label=None):
@@ -153,9 +246,9 @@ def traditional_models (X_train, y_train, X_test, y_test, pos_label=None):
     for i in range(0, len(trees)):
         for j in range(0, len(td)):
             ada = AdaBoostClassifier(
-                base_estimator=DecisionTreeClassifier(max_depth=td[j]),
-                n_estimators=trees[i],
-                learning_rate=.05)
+                  base_estimator=DecisionTreeClassifier(max_depth=td[j]),
+                  n_estimators=trees[i],
+                  learning_rate=.05)
             p[k, 0] = trees[i]
             p[k, 1] = td[j]
             p[k, 2] = np.mean(cross_val_score(ada, X_train, y_train, cv=5))
@@ -164,8 +257,8 @@ def traditional_models (X_train, y_train, X_test, y_test, pos_label=None):
     x.columns = ['ntree', 'depth', 'cv_score']
     p = x.ix[x['cv_score'].argmax()]
     ada = AdaBoostClassifier(
-        base_estimator=DecisionTreeClassifier(max_depth=p[1]),
-        n_estimators=int(p[0]), learning_rate=.05)
+          base_estimator=DecisionTreeClassifier(max_depth=p[1]),
+          n_estimators=int(p[0]), learning_rate=.05)
     ada.fit(X_train, y_train)
     yhat = ada.predict(X_test)
     ada_acc = accuracy_score(y_test, yhat)
@@ -193,8 +286,9 @@ def traditional_models (X_train, y_train, X_test, y_test, pos_label=None):
                                   ada_acc, svm_acc],
                       'AUC':[logreg_auc, knn_auc, lda_auc, qda_auc, rf_auc,
                              ada_auc, svm_auc],
-                      'D_Accuracy':[logreg_dacc, knn_dacc, lda_dacc, qda_dacc, rf_dacc,
-                                  ada_dacc, svm_dacc]},
+                      'D_Accuracy':[logreg_dacc, knn_dacc, lda_dacc, qda_dacc,
+                                    rf_dacc,
+                                    ada_dacc, svm_dacc]},
                      index=['LogReg', 'KNN', 'LDA', 'QDA', 'RandomForest',
                             'ADABoost', 'SVM'])
     return x
