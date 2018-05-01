@@ -20,7 +20,7 @@ from sklearn.metrics import auc
 import warnings
 warnings.filterwarnings('ignore')
 
-def traditional_models(X_train, y_train, X_test, y_test):
+def traditional_models(X_train, y_train, X_test, y_test, pos_label=None):
     """
     Applies logistic regression
     :param X_train: Training Set Predictors
@@ -35,7 +35,8 @@ def traditional_models(X_train, y_train, X_test, y_test):
     logregcv.fit(X_train, y_train)
     yhat = logregcv.predict(X_test)
     logreg_acc = accuracy_score(y_test, yhat)
-    fpr_log, tpr_log, thresholds = metrics.roc_curve(y_test, logregcv.predict_proba(X_test)[:, 1])
+    fpr_log, tpr_log, thresholds = metrics.roc_curve(
+          y_test, logregcv.predict_proba(X_test)[:, 1], pos_label=pos_label)
     logreg_auc = auc(fpr_log, tpr_log)
 
     # knn
@@ -60,7 +61,8 @@ def traditional_models(X_train, y_train, X_test, y_test):
     yhat = knn.predict(X_test)
     knn_acc = accuracy_score(y_test, yhat)
     # Calculating auc on testset
-    fpr_knn, tpr_knn, thresholds = metrics.roc_curve(y_test, knn.predict_proba(X_test)[:, 1])
+    fpr_knn, tpr_knn, thresholds = metrics.roc_curve(
+          y_test, knn.predict_proba(X_test)[:, 1], pos_label=pos_label)
     knn_auc = auc(fpr_knn, tpr_knn)
 
     # LDA
@@ -71,7 +73,8 @@ def traditional_models(X_train, y_train, X_test, y_test):
     yhat = lda.predict(X_test)
     lda_acc = accuracy_score(y_test, yhat)
     # Calculating auc on testset
-    fpr_lda, tpr_lda, thresholds = metrics.roc_curve(y_test, lda.predict_proba(X_test)[:, 1])
+    fpr_lda, tpr_lda, thresholds = metrics.roc_curve(
+          y_test, lda.predict_proba(X_test)[:, 1], pos_label=pos_label)
     lda_auc = auc(fpr_lda, tpr_lda)
 
     # QDA
@@ -82,7 +85,8 @@ def traditional_models(X_train, y_train, X_test, y_test):
     yhat = qda.predict(X_test)
     qda_acc = accuracy_score(y_test, yhat)
     # Calculating auc on testset
-    fpr_qda, tpr_qda, thresholds = metrics.roc_curve(y_test, qda.predict_proba(X_test)[:, 1])
+    fpr_qda, tpr_qda, thresholds = metrics.roc_curve(
+          y_test, qda.predict_proba(X_test)[:, 1], pos_label=pos_label)
     qda_auc = auc(fpr_qda, tpr_qda)
 
     # Random Forest
@@ -110,7 +114,8 @@ def traditional_models(X_train, y_train, X_test, y_test):
     yhat = rf.predict(X_test)
     rf_acc = accuracy_score(y_test, yhat)
     # Calculating auc on testset
-    fpr_rf, tpr_rf, thresholds = metrics.roc_curve(y_test, rf.predict_proba(X_test)[:, 1])
+    fpr_rf, tpr_rf, thresholds = metrics.roc_curve(
+          y_test, rf.predict_proba(X_test)[:, 1], pos_label=pos_label)
     rf_auc = auc(fpr_rf, tpr_rf)
 
     # ADA Boost
@@ -141,7 +146,8 @@ def traditional_models(X_train, y_train, X_test, y_test):
     ada_acc = accuracy_score(y_test, yhat)
 
     # Calculating auc on testset
-    fpr_ada, tpr_ada, thresholds = metrics.roc_curve(y_test, ada.predict_proba(X_test)[:, 1])
+    fpr_ada, tpr_ada, thresholds = metrics.roc_curve(
+          y_test, ada.predict_proba(X_test)[:, 1], pos_label=pos_label)
     ada_auc = auc(fpr_ada, tpr_ada)
 
     # Support Vector Classification
@@ -152,7 +158,8 @@ def traditional_models(X_train, y_train, X_test, y_test):
     svm_acc = accuracy_score(y_test, yhat > 0.5)
 
     # Calculating auc on testset
-    fpr_svm, tpr_svm, thresholds = metrics.roc_curve(y_test, svc.predict_proba(X_test)[:, 1])
+    fpr_svm, tpr_svm, thresholds = metrics.roc_curve(
+          y_test, svc.predict_proba(X_test)[:, 1], pos_label=pos_label)
     svm_auc = auc(fpr_svm, tpr_svm)
 
     x = pd.DataFrame({'Accuracy':[logreg_acc,knn_acc,lda_acc,qda_acc,rf_acc,ada_acc,svm_acc],

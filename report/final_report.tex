@@ -221,26 +221,33 @@ We first made three decisions regarding the feature space that greatly simplifie
 \end{enumerate}
 
 First, by deciding on the above factors, we preclude the need to iterate over all different variations when experimenting with different models. Second, our more engineered features (with their own meta-features) depend on how the above steps are set. Finally, it makes intuitive sense that these decisions are relatively model-agnostic. In other words, if a simple model performs better given a certain rolling window for changes in price and volume, then there is strong justification for believing that features created using that window carry the most relevant information, even with more complex models.
-
+\bigbreak
+After trying out varying rolling windows for 
 \subsubsection{Linear Regression: Continuous Target}
 
+The baseline model for the continuous target objective was ordinary least squares regression. It serves as a great baseline model because it is the simplest in terms of interpretation: 
+
 \subsubsection{Logistic Regression: Categorical Target}
-
-
 
 \section{Results}
 
 \subsection{Project Trajectory}
 
-For the baseline model, we first had to decide which rolling windows to use. 
+We were surprised with several developments along the way of our project. The most surprising was the fact that the incorporation of rolling returns for other financial assets did not improve our model's capabilities (for either regression or classification). In hindsight, we should perhaps not have been surprised given the correlation between the daily returns on Bitcoin (as an example) and other financial assets did not exceed 10\%. Cryptocurrencies are very different than other assets, such as equities, bonds, currencies and (physical) commodities.
+
+For the baseline model, we first had to decide which rolling windows to use.
 
 \subsection{Interpretation}
 
+What can we learn from the ultimate choice of models and features? First, the best prior data to use in predicting tomorrow's returns are today's data (and no more than that). Increasing the window with which we calculated the rolling returns up to the present by more than one day for inclusion in our feature matrix worsened the results. Our prior conviction was mixed. Calculating the rolling returns over a longer window could plausibly be viewed as an indirect way of preventing over-fitting by capturing a more systemic trend than captured in a single day. Yet, the results proved the reverse. Perhaps this makes more intuitive sense once we recall the immense volatility associated with cryptocurrencies and the fact that 
+\bigbreak
+Although some of the results were disappointing, the information we can derive from those results is still immensely valuable. The futility of including returns data from non-cryptocurrency assets in our predictive efforts suggests that the investor base for cryptocurrencies is still very different than that of more traditional financial assets. One way the investment community could interpret this result is that cryptocurrencies offer a form of diversification perhaps unparalleled by other assets. In the capital asset pricing model (CAPM), investors should be happy with lower expected returns for assets that have a low $\beta$ (correlation to the overall market) due to the diversification benefit such assets provide, realized through their effect of lowering overall portfolio variance. Although the variance of cryptocurrencies individually is quite high, we would still expect to see a drop in overall portfolio variance, assuming the portfolio were well diversified, because of the seeming lack of relationship between cryptocurrency price returns and the returns of other financial assets.
+\bigbreak
 
 
 \section{Conclusion}
 
-Results were bad.
+The aim of this paper was to build a predictive model for future cryptocurrency returns based on current cryptocurrency returns and other data. We succeeded in building a model that can predict better than chance alone (at least, when utilized on the time frame covered by this project), but perhaps not one we would feel comfortable betting our own capital on.
 
 \subsection{Possible Future Work}
 
@@ -268,10 +275,5 @@ Yan, Yihang, et al. ``Do cryptocurrencies move in a parallel manner?." \textit{H
 
 
 \end{document}
-
-
-
-
-
 
 

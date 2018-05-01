@@ -169,7 +169,7 @@ class DesignMatrix(object):
         self.done_standardizing_crypto = False
 
     def get_data (self, std=True, lag_indicator=False, y_category=False,
-                  y_category_thresh=0.01, y_std=False):
+                  y_category_thresh=0.01, y_std=False, add_news=False):
         """Performs all necessary steps to return finalized X, Y data.
 
         Args:
@@ -201,6 +201,9 @@ class DesignMatrix(object):
         if lag_indicator:
             self._add_relative_lag_indicator()
 
+        if add_news:
+            self._add_news_features()
+
         self.df_final['Y'] = self.df_final[y_continuous_col].shift(periods=-1)
         self.df_final.dropna(axis=0, how='any', inplace=True)
         if y_category:
@@ -210,6 +213,18 @@ class DesignMatrix(object):
         X = self.df_final[self.x_feature_names]
         Y = self.df_final['Y']
         return X, Y
+
+    def _add_news_features(self):
+        """PLACEHOLDER FOR ALI"""
+        # You can switch this name to whatever you want, just needs to be added
+        # to self._x_features at the end (which it currently is).
+        feature_column_name = 'news_feature'
+
+        self.df_final[feature_column_name] = 'Dummy'
+
+        # Make sure to add it to self._x_features.
+        self._x_features.append(feature_column_name)
+
 
     def _add_relative_lag_indicator (self):
         """Add indicator variable `lagged_others` indicating whether the price
@@ -363,14 +378,6 @@ class DesignMatrix(object):
             x_feats.append(x)
         return x_feats
 
-    @property
-    def X (self):
-        return self.df_final[self.x_feature_names]
-
-    @property
-    def Y (self):
-        return self.df_final['Y']
-
 
 def rolling_standardize (x):
     """Intended to be used on pandas.core.window.Rolling.apply().
@@ -491,3 +498,14 @@ def fmt_date (dt):
         return pd.to_datetime(str(dt)).strftime("%m/%d/%Y")
     else:
         raise ValueError('Unhandled type: {}'.format(type(dt)))
+
+
+if __name__ == '__main__':
+    x_cryptos = ['ltc', 'xrp', 'xlm', 'eth']
+    y_crypto = 'btc'
+    kwargs = {'n_rolling_price':1, 'n_rolling_volume':2,
+              'x_assets':['SP500'], 'n_std_window':20}
+
+    dm = DesignMatrix(x_cryptos=x_cryptos, y_crypto=y_crypto, **kwargs)
+    X, Y = dm.get_data(add_news=True)
+    print(X.head(5))
