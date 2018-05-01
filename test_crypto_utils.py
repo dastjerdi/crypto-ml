@@ -6,13 +6,26 @@ figures.
 """
 
 import unittest
-
+import numpy as np
 import pandas as pd
 
 import crypto_utils as cryp
 
+import create_models as cryp_mod
+
 DEC_ACCY = 5  # decimals to check for accuracy
 
+
+class TestCryptoModels(unittest.TestCase):
+
+    def test_directional_accuracy(self):
+        """In predictions, there are elements that are either +1/-1 (not 0),
+        and four of those are labeled correctly according to true values."""
+        y_pred = np.array([1, 1, 1, 0, 0, 0, 0, -1, -1, 1])
+        y_true = np.array([1, 1, 0, -1, 0, 1, -1, 1, -1, 1])
+        expected = 0.6666667
+        actual = cryp_mod.directional_accuracy(y_true, y_pred)
+        self.assertAlmostEqual(actual, expected, DEC_ACCY)
 
 class TestDesignMatrix(unittest.TestCase):
 
