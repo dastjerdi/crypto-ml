@@ -35,8 +35,10 @@ def directional_accuracy (y_true, y_pred):
     """
     idx_of_interest = np.where(y_pred!=0)[0]
     in_scope_total = len(idx_of_interest)
+    if in_scope_total == 0:
+        return np.NaN
+
     correct = 0
-    print(idx_of_interest)
     for i in idx_of_interest:
         if y_true[i]==y_pred[i]:
             correct += 1
@@ -63,7 +65,7 @@ def build_xgb_model (X_train, y_train, n_cv, verbose=False):
     t0 = time.time()
     if verbose:
         print_update('Tuning XGBRegressor hyperparams...')
-    gs = RandomizedSearchCV(xgb, cv_params, n_iter=200, n_jobs=1, cv=n_cv)
+    gs = RandomizedSearchCV(xgb, cv_params, n_iter=150, n_jobs=1, cv=n_cv)
     gs.fit(X_train, y_train)
     if verbose:
         print_update('Finished tuning XGBRegressor in {:.0f} secs.'.format(
@@ -79,10 +81,8 @@ def optimize_regressor (estimator, X_train, y_train, params, cv):
     return gs_model
 
 
-def run_regression_models (X_train, y_train, X_test, y_test, scoring=None):
-    """Analog to `traditional_models()` for the continuous output
-    (regression) problem.
-    """
+def regression_models (X_train, y_train, X_test, y_test, scoring=None):
+    """Analog to `traditional_models()` for the continuous output problem."""
     if scoring is None:
         scoring = mean_absolute_error
 
@@ -95,6 +95,7 @@ def run_regression_models (X_train, y_train, X_test, y_test, scoring=None):
     gs_rforest_params = {'n_estimators':range(5, 30, 5)}
 
     # Fit models / solve for optimal hyperparameters.
+    print_update('Fitting Ridge, Lasso, ElasticNet, RandomForest...')
     ridge = RidgeCV(alphas=cv_ridge_alphas, cv=N_CV).fit(X_train, y_train)
     lasso = LassoCV(n_alphas=cv_lasso_n_alphas, cv=N_CV).fit(X_train, y_train)
     grid_rf = optimize_regressor(RandomForestRegressor(), X_train, y_train,
@@ -102,12 +103,14 @@ def run_regression_models (X_train, y_train, X_test, y_test, scoring=None):
     enet = ElasticNetCV(l1_ratio=cv_enet_l1_ratios, n_alphas=cv_enet_n_alphas,
                         cv=N_CV).fit(X_train, y_train)
     rf = RandomForestRegressor(**grid_rf.best_params_).fit(X_train, y_train)
+    print_update('Fitting XGBRegressor...')
     xgb, grid_xgb = build_xgb_model(X_train, y_train, N_CV)
 
     # Compute score for each model on test set.
     models = [(ridge, 'Ridge'), (lasso, 'Lasso'), (rf, 'RandomForest'),
               (enet, 'ElasticNet'), (xgb, 'XGBRegressor')]
 
+    print_update('Measuring accuracy on test set...')
     df = pd.DataFrame(columns=['model', 'score', 'hyperparam', 'value'])
     for (model, name) in models:
         score = scoring(y_test, model.predict(X_test))
@@ -126,7 +129,7 @@ def run_regression_models (X_train, y_train, X_test, y_test, scoring=None):
     df.loc['ElasticNet', 'value'] = enet.l1_ratio_
     df.loc['XGBRegressor', 'hyperparam'] = 'n_estimators'
     df.loc['XGBRegressor', 'value'] = grid_xgb.best_params_['n_estimators']
-
+    print_update('Finished evaluating regression models.')
     return df
 
 

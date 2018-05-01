@@ -6,19 +6,19 @@ figures.
 """
 
 import unittest
+
 import numpy as np
 import pandas as pd
 
-import crypto_utils as cryp
-
 import create_models as cryp_mod
+import crypto_utils as cryp
 
 DEC_ACCY = 5  # decimals to check for accuracy
 
 
 class TestCryptoModels(unittest.TestCase):
 
-    def test_directional_accuracy(self):
+    def test_directional_accuracy (self):
         """In predictions, there are elements that are either +1/-1 (not 0),
         and four of those are labeled correctly according to true values."""
         y_pred = np.array([1, 1, 1, 0, 0, 0, 0, -1, -1, 1])
@@ -26,6 +26,7 @@ class TestCryptoModels(unittest.TestCase):
         expected = 0.6666667
         actual = cryp_mod.directional_accuracy(y_true, y_pred)
         self.assertAlmostEqual(actual, expected, DEC_ACCY)
+
 
 class TestDesignMatrix(unittest.TestCase):
 
@@ -54,24 +55,24 @@ class TestDesignMatrix(unittest.TestCase):
         row_bound = (800, 1000)
         actual_rows = X.shape[0]
         msg = 'Number of rows not within expected bounds.'
-        self.assertTrue(row_bound[0] < actual_rows < row_bound[1], msg)
+        self.assertTrue(row_bound[0]<actual_rows<row_bound[1], msg)
 
         msg = 'X and Y have different number of rows.'
         self.assertEqual(X.shape[0], Y.shape[0], msg)
 
         # Ensure X columns match.
-        expected_x_cols = ['SP500', 'ltc_px_std', 'xrp_px_std', 'xlm_px_std',
-                           'eth_px_std', 'btc_px_std', 'ltc_volume_std',
-                           'xrp_volume_std', 'xlm_volume_std', 'eth_volume_std',
-                           'btc_volume_std', 'lagged_others']
+        expected_x_cols = ['SP500_px_std', 'ltc_px_std', 'xrp_px_std',
+                           'xlm_px_std', 'eth_px_std', 'btc_px_std',
+                           'ltc_volume_std', 'xrp_volume_std', 'xlm_volume_std',
+                           'eth_volume_std', 'btc_volume_std', 'lagged_others']
         actual_x_cols = X.columns.tolist()
+        print(actual_x_cols)
         msg = 'Number of X columns different than expected.'
         self.assertEqual(len(actual_x_cols), len(expected_x_cols), msg)
 
         for col in expected_x_cols:
             msg = 'Expected column not found: {}'.format(col)
             self.assertTrue(col in actual_x_cols, msg)
-
 
     def test_load_time_series (self):
         """Ensure initial time series is created successfully by comparing
@@ -114,9 +115,9 @@ class TestDesignMatrix(unittest.TestCase):
             actual_value = df.loc[idx, 'SP500']
             self.assertAlmostEqual(value, actual_value, DEC_ACCY, msg)
 
-    def test_standardize_crypto_figures (self):
+    def test_standardize_price_volume (self):
         self.dm._load_time_series()
-        self.dm._standardize_crypto_figures()
+        self.dm._standardize_price_volume()
         df = self.dm.df_final
 
         # Define expected results.
@@ -135,7 +136,7 @@ class TestDesignMatrix(unittest.TestCase):
 
     def test_add_relative_lag_indicator (self):
         self.dm._load_time_series()
-        self.dm._standardize_crypto_figures()
+        self.dm._standardize_price_volume()
         self.dm._add_relative_lag_indicator()
         df = self.dm.df_final
 
@@ -173,24 +174,6 @@ class TestDesignMatrix(unittest.TestCase):
                     (pd.to_datetime('1/13/2018'), -0.040960432),
                     (pd.to_datetime('1/14/2018'), 0.00347081),
                     (pd.to_datetime('1/15/2018'), -0.168548025)]
-
-        for (idx, e) in expected:
-            msg = 'Y value not what expected on {}'.format(cryp.fmt_date(idx))
-            actual = Y[idx]
-            self.assertAlmostEqual(e, actual, DEC_ACCY, msg)
-
-    def test_Y_std (self):
-        """Ensure y-value (bitcoin price return) at future date is what we
-        expect.
-
-        For example, the Y value for 1/12/2018 should be equal to the bitcoin
-        return on 1/13 (standardized).
-        """
-        X, Y = self.dm.get_data(std=True)
-        expected = [(pd.to_datetime('1/12/2018'), 0.377138),
-                    (pd.to_datetime('1/13/2018'), -0.633414),
-                    (pd.to_datetime('1/14/2018'), 0.025708),
-                    (pd.to_datetime('1/15/2018'), -2.569766)]
 
         for (idx, e) in expected:
             msg = 'Y value not what expected on {}'.format(cryp.fmt_date(idx))

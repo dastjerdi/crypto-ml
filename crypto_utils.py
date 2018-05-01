@@ -146,6 +146,9 @@ class DesignMatrix(object):
         rolling (trailing) price returns.
         n_rolling_volume (int): Optional, default 1. Days over which to compute
         rolling change in trading volume.
+        n_std_window_noncrypto (int): Optional, default 30. Days over which
+        to standardize price changes for non-cryptocurrency assets (i.e.,
+        items in `x_assets`.
         start_date (datetime.datetime): Desired beginning of rolling returns
         data.
         end_date (datetime.datetime): Desired end of rolling returns data
@@ -168,6 +171,7 @@ class DesignMatrix(object):
         self.x_assets = kwargs.get('x_assets', [])
         self.n_rolling_price = kwargs.get('n_rolling_price', 1)
         self.n_rolling_volume = kwargs.get('n_rolling_volume', 1)
+        self.n_std_window_noncrypto = kwargs.get('n_std_window_noncrypto', 30)
         self.n_std_window = kwargs.get('n_std_window', 10)
         self.start_date = kwargs.get('start_date', pd.to_datetime('1/1/2010'))
         self.end_date = kwargs.get('end_date', pd.to_datetime('today'))
@@ -175,7 +179,7 @@ class DesignMatrix(object):
         self.df_final = None
         self._x_features = []
         self.done_loading_time_series = False
-        self.done_standardizing_crypto = False
+        self.done_std_price_and_volume = False
 
     def get_data (self, std=True, lag_indicator=False, y_category=False,
                   y_category_thresh=0.01, y_std=False, add_news=False):
@@ -200,7 +204,7 @@ class DesignMatrix(object):
         # If we standardize, the column name used to create our shifted Y
         # will be different.
         if std:
-            self._standardize_crypto_figures()
+            self._standardize_price_volume()
             if y_std:
                 y_continuous_col = '{}_px_std'.format(self.y_crypto)
             else:
@@ -357,13 +361,14 @@ class DesignMatrix(object):
                 new_Y[i] = 0
         return new_Y
 
-    def _standardize_crypto_figures (self):
+    def _standardize_price_volume (self):
         """Add new columns containing standardized price and volume for all
-        cryptocurrencies.
+        cryptocurrencies and standardized price for non-cryptocurrency assets.
         """
-        if self.done_standardizing_crypto:
+        if self.done_std_price_and_volume:
             return
-        n = self.n_std_window + 1
+        # Standardize cryptocurrency price and volume.
+        n_cryp = self.n_std_window + 1
         for cryp in self.xy_cryptos:
             col_price = cryp
             col_vol = '{}_volume'.format(cryp)
@@ -371,19 +376,27 @@ class DesignMatrix(object):
             col_vol_std = '{}_volume_std'.format(cryp)
             self._x_features.extend([col_price_std, col_vol_std])
             self.df_final[col_price_std] = self.df_final[col_price].rolling(
-                  window=n).apply(
-                  rolling_standardize)
+                  window=n_cryp).apply(rolling_standardize)
             self.df_final[col_vol_std] = self.df_final[col_vol].rolling(
-                  window=n).apply(
-                  rolling_standardize)
-        self.done_standardizing_crypto = True
+                  window=n_cryp).apply(rolling_standardize)
+        # Standardize non-cryptocurrency price.
+        n_non_cryp = self.n_std_window_noncrypto + 1
+        for x_asset in self.x_assets:
+            col_price = x_asset
+            col_price_std = '{}_px_std'.format(x_asset)
+            self._x_features.append(col_price_std)
+            self.df_final[col_price_std] = self.df_final[col_price].rolling(
+                  window=n_non_cryp).apply(rolling_standardize)
+
+        self.done_std_price_and_volume = True
 
     @property
     def x_feature_names (self):
         """Returns columns pertaining to design matrix."""
         x_feats = copy.copy(self._x_features)
-        for x in self.x_assets:
-            x_feats.append(x)
+        if not self.done_std_price_and_volume:
+            for x in self.x_assets:
+                x_feats.append(x)
         return x_feats
 
 
