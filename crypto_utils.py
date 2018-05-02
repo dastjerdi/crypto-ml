@@ -159,6 +159,8 @@ class DesignMatrix(object):
         self.x_assets = kwargs.get('x_assets', [])
         self.n_rolling_price = kwargs.get('n_rolling_price', 1)
         self.n_rolling_volume = kwargs.get('n_rolling_volume', 1)
+        self.add_news = kwargs.get('add_news', False)
+        self.news = kwargs.get('news', None)
         self.n_std_window = kwargs.get('n_std_window', 20)
         self.start_date = kwargs.get('start_date', pd.to_datetime('1/1/2010'))
         self.end_date = kwargs.get('end_date', pd.to_datetime('today'))
@@ -169,7 +171,7 @@ class DesignMatrix(object):
         self.done_standardizing_crypto = False
 
     def get_data (self, std=True, lag_indicator=False, y_category=False,
-                  y_category_thresh=0.01, y_std=False, add_news=False):
+                  y_category_thresh=0.01, y_std=False):
         """Performs all necessary steps to return finalized X, Y data.
 
         Args:
@@ -201,7 +203,7 @@ class DesignMatrix(object):
         if lag_indicator:
             self._add_relative_lag_indicator()
 
-        if add_news:
+        if self.add_news:
             self._add_news_features()
 
         self.df_final['Y'] = self.df_final[y_continuous_col].shift(periods=-1)
@@ -215,15 +217,8 @@ class DesignMatrix(object):
         return X, Y
 
     def _add_news_features(self):
-        """PLACEHOLDER FOR ALI"""
-        # You can switch this name to whatever you want, just needs to be added
-        # to self._x_features at the end (which it currently is).
-        feature_column_name = 'news_feature'
-
-        self.df_final[feature_column_name] = 'Dummy'
-
-        # Make sure to add it to self._x_features.
-        self._x_features.append(feature_column_name)
+        self.df_final = self.df_final.merge(self.news, left_index=True, right_index=True)
+        self._x_features += list(self.news.columns)
 
 
     def _add_relative_lag_indicator (self):
